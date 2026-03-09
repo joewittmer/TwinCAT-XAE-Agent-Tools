@@ -1,0 +1,6 @@
+[Bb]in/
+[Oo]bj/
+.vs/
+appsettings.Development.json
+dotnet-install.sh
+.a0proj/
