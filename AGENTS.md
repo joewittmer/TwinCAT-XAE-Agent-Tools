@@ -50,6 +50,8 @@
 - Use lowercase commit messages.
 - Add new features on a dedicated `feature/<name>` branch, creating one from `main` unless the user names an existing branch.
 - Keep `main` for stable fixes, documentation, release, and maintenance work unless the user explicitly asks for feature work there.
+- When bumping `Version`, create and push the matching `vX.Y.Z` tag on the commit that contains that version after build and test verification.
+- Do not tag `main` for a version that only exists on a feature branch.
 
 ## Documentation
 - Keep README examples aligned with the implemented endpoint.
