@@ -17,7 +17,7 @@ internal sealed class TrayAppController : INotifyPropertyChanged, IDisposable
     private readonly Action _exit;
     private readonly SettingsStore _settingsStore = new();
     private readonly CodexConfigStore _codexConfigStore = new();
-    private readonly ServerProcessManager _serverProcess = new();
+    private readonly ServerHostManager _serverHost = new();
     private readonly ServerHealthClient _healthClient = new();
     private readonly DispatcherTimer _timer;
     private readonly DispatcherTimer _notificationTimer;
@@ -193,7 +193,7 @@ internal sealed class TrayAppController : INotifyPropertyChanged, IDisposable
         {
             SaveSettings(showNotification: false);
             Status = "Starting";
-            await _serverProcess.StartAsync(Settings);
+            await _serverHost.StartAsync(Settings);
             await RefreshHealthAsync();
             ShowNotification("TwinCAT XAE Agent Tools server started.");
         }
@@ -206,7 +206,7 @@ internal sealed class TrayAppController : INotifyPropertyChanged, IDisposable
 
     public async Task StopServerAsync()
     {
-        await _serverProcess.StopAsync();
+        await _serverHost.StopAsync();
         IsServerHealthy = false;
         Status = "Stopped";
         ShowNotification("TwinCAT XAE Agent Tools server stopped.");
@@ -236,7 +236,7 @@ internal sealed class TrayAppController : INotifyPropertyChanged, IDisposable
             return;
         }
 
-        Status = _serverProcess.IsRunning ? "Starting or unavailable" : "Stopped";
+        Status = _serverHost.IsRunning ? "Starting or unavailable" : "Stopped";
     }
 
     public void OnSettingsChanged()
@@ -258,7 +258,7 @@ internal sealed class TrayAppController : INotifyPropertyChanged, IDisposable
     {
         _timer.Stop();
         _notificationTimer.Stop();
-        _serverProcess.Dispose();
+        _serverHost.Dispose();
         _healthClient.Dispose();
     }
 

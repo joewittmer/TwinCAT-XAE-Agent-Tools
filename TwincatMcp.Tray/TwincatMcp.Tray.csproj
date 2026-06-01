@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Assets\tray.ico</ApplicationIcon>
+    <AssemblyName>TwinCAT XAE Agent Tools</AssemblyName>
     <Product>TwinCAT XAE Agent Tools</Product>
     <AssemblyTitle>TwinCAT XAE Agent Tools</AssemblyTitle>
   </PropertyGroup>
@@ -20,7 +21,21 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.3.9" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.9" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.9" />
+    <PackageReference Include="Beckhoff.TwinCAT.Ads" Version="7.0.172" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.3.0" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\McpServerHost.cs" Link="Server\McpServerHost.cs" />
+    <Compile Include="..\Mcp\**\*.cs" LinkBase="Server\Mcp" />
+    <Compile Include="..\TwinCat\**\*.cs" LinkBase="Server\TwinCat" />
+    <Compile Include="..\Workspace\**\*.cs" LinkBase="Server\Workspace" />
   </ItemGroup>
 
 </Project>

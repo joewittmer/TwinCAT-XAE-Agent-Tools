@@ -1,6 +1,6 @@
 #define AppName "TwinCAT XAE Agent Tools"
 #define AppPublisher "TwinCAT XAE Agent Tools"
-#define AppExeName "TwincatMcp.Tray.exe"
+#define AppExeName "TwinCAT XAE Agent Tools.exe"
 
 #ifndef AppVersion
 #define AppVersion "0.1.0"
@@ -43,7 +43,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SourceDir}\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"

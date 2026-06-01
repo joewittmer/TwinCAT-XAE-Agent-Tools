@@ -18,8 +18,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TwincatMcp.Tray\TwincatMcp.Tray.csproj" />
     <ProjectReference Include="..\TwincatMcpServer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\TwincatMcp.Tray\Services\ClientConfigurationText.cs" Link="TrayServices\ClientConfigurationText.cs" />
+    <Compile Include="..\TwincatMcp.Tray\Services\CodexConfigStore.cs" Link="TrayServices\CodexConfigStore.cs" />
   </ItemGroup>
 
   <ItemGroup>

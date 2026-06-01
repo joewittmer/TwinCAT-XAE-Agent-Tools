@@ -60,33 +60,34 @@ jobs:
       - name: Publish application
         run: |
           $publishDir = Join-Path $env:GITHUB_WORKSPACE "artifacts\publish\$env:RUNTIME_IDENTIFIER"
+          if (Test-Path -LiteralPath $publishDir) {
+            Remove-Item -LiteralPath $publishDir -Recurse -Force
+          }
           New-Item -ItemType Directory -Force -Path $publishDir | Out-Null
-
-          dotnet publish TwincatMcpServer.csproj `
-            --configuration $env:BUILD_CONFIGURATION `
-            --runtime $env:RUNTIME_IDENTIFIER `
-            --self-contained true `
-            --output $publishDir `
-            -p:PublishSingleFile=false `
-            -p:PublishTrimmed=false
 
           dotnet publish TwincatMcp.Tray\TwincatMcp.Tray.csproj `
             --configuration $env:BUILD_CONFIGURATION `
             --runtime $env:RUNTIME_IDENTIFIER `
             --self-contained true `
             --output $publishDir `
-            -p:PublishSingleFile=false `
-            -p:PublishTrimmed=false
+            -p:PublishSingleFile=true `
+            -p:PublishTrimmed=false `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:DebugType=None `
+            -p:DebugSymbols=false
 
-          $expectedFiles = @(
-            (Join-Path $publishDir "TwincatMcp.Tray.exe"),
-            (Join-Path $publishDir "TwincatMcpServer.exe")
+          $expectedFile = Join-Path $publishDir "TwinCAT XAE Agent Tools.exe"
+          if (-not (Test-Path -LiteralPath $expectedFile)) {
+            throw "Expected published file was not found: $expectedFile"
+          }
+
+          $extraFiles = @(Get-ChildItem -LiteralPath $publishDir -File |
+            Where-Object { $_.FullName -ne $expectedFile }
           )
-
-          foreach ($file in $expectedFiles) {
-            if (-not (Test-Path $file)) {
-              throw "Expected published file was not found: $file"
-            }
+          if ($extraFiles.Count -gt 0) {
+            $extraFileList = $extraFiles.FullName -join ", "
+            throw "Single-file publish produced unexpected extra files: $extraFileList"
           }
 
       - name: Install Inno Setup
@@ -121,7 +122,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tagName = $env:GITHUB_REF_NAME
-          $installerFiles = Get-ChildItem artifacts\installer\*.exe
+          $installerFiles = @(Get-ChildItem artifacts\installer\*.exe)
           if ($installerFiles.Count -eq 0) {
             throw "No installer files were found to upload to the release."
           }

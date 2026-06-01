@@ -256,7 +256,7 @@ Unit tests cover configuration defaults and binding, workspace path safety, file
 
 ### Installer Pipeline
 
-Pushes to `main` run the `Build installer` GitHub Actions workflow. The workflow builds and tests the solution, publishes the server and tray app together as a self-contained `win-x64` application, builds the Inno Setup installer, and uploads the installer executable as the `twincat-xae-agent-tools-installer` workflow artifact.
+Pushes to `main` run the `Build installer` GitHub Actions workflow. The workflow builds and tests the solution, publishes the tray app as a self-contained single-file `win-x64` executable named `TwinCAT XAE Agent Tools.exe`, builds the Inno Setup installer, and uploads the installer executable as the `twincat-xae-agent-tools-installer` workflow artifact.
 
 Pushing a version tag also creates or updates a GitHub release with the installer attached:
 
