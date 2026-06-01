@@ -236,6 +236,12 @@ dotnet test twincat_mcp.sln --configuration Release
 
 Unit tests cover configuration defaults and binding, workspace path safety, file edits, MCP tool metadata, and confirmation guards. Real XAE COM automation is an integration/manual test because it requires TwinCAT XAE on Windows.
 
+### Installer Pipeline
+
+Pushes to `main` run the `Build installer` GitHub Actions workflow. The workflow builds and tests the solution, publishes the server and tray app together as a self-contained `win-x64` application, builds the Inno Setup installer, and uploads the installer executable as the `twincat-xae-agent-tools-installer` workflow artifact.
+
+Version information is centralized in `Directory.Build.props`. Bump `Version`, `AssemblyVersion`, and `FileVersion` there before building a release; the installer filename uses the same `Version` value.
+
 ### Future Features
 
 These are good next steps for deeper project development:

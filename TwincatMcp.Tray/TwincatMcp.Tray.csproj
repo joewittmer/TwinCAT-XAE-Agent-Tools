@@ -8,11 +8,6 @@
     <ApplicationIcon>Assets\tray.ico</ApplicationIcon>
     <Product>TwinCAT XAE Agent Tools</Product>
     <AssemblyTitle>TwinCAT XAE Agent Tools</AssemblyTitle>
-    <Version>0.1.0</Version>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.1.0.0</FileVersion>
-    <InformationalVersion>$(Version)</InformationalVersion>
-    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

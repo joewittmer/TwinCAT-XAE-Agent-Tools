@@ -4,3 +4,4 @@
 appsettings.Development.json
 dotnet-install.sh
 .a0proj/
+artifacts/

@@ -1,0 +1,114 @@
+name: Build installer
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BUILD_CONFIGURATION: Release
+  DOTNET_VERSION: 10.0.x
+  RUNTIME_IDENTIFIER: win-x64
+
+jobs:
+  build-installer:
+    name: Build Windows installer
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Read app version
+        run: |
+          [xml]$props = Get-Content Directory.Build.props
+          $versionProperty = $props.Project.PropertyGroup |
+            Where-Object { $_.Version } |
+            Select-Object -First 1
+
+          $version = $versionProperty.Version
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            $version = "0.0.0"
+          }
+
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Restore
+        run: dotnet restore twincat_mcp.sln
+
+      - name: Build
+        run: dotnet build twincat_mcp.sln --configuration $env:BUILD_CONFIGURATION --no-restore
+
+      - name: Test
+        run: dotnet test twincat_mcp.sln --configuration $env:BUILD_CONFIGURATION --no-build --verbosity normal
+
+      - name: Publish application
+        run: |
+          $publishDir = Join-Path $env:GITHUB_WORKSPACE "artifacts\publish\$env:RUNTIME_IDENTIFIER"
+          New-Item -ItemType Directory -Force -Path $publishDir | Out-Null
+
+          dotnet publish TwincatMcpServer.csproj `
+            --configuration $env:BUILD_CONFIGURATION `
+            --runtime $env:RUNTIME_IDENTIFIER `
+            --self-contained true `
+            --output $publishDir `
+            -p:PublishSingleFile=false `
+            -p:PublishTrimmed=false
+
+          dotnet publish TwincatMcp.Tray\TwincatMcp.Tray.csproj `
+            --configuration $env:BUILD_CONFIGURATION `
+            --runtime $env:RUNTIME_IDENTIFIER `
+            --self-contained true `
+            --output $publishDir `
+            -p:PublishSingleFile=false `
+            -p:PublishTrimmed=false
+
+          $expectedFiles = @(
+            (Join-Path $publishDir "TwincatMcp.Tray.exe"),
+            (Join-Path $publishDir "TwincatMcpServer.exe")
+          )
+
+          foreach ($file in $expectedFiles) {
+            if (-not (Test-Path $file)) {
+              throw "Expected published file was not found: $file"
+            }
+          }
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build installer
+        run: |
+          $installerDir = Join-Path $env:GITHUB_WORKSPACE "artifacts\installer"
+          $publishDir = Join-Path $env:GITHUB_WORKSPACE "artifacts\publish\$env:RUNTIME_IDENTIFIER"
+          New-Item -ItemType Directory -Force -Path $installerDir | Out-Null
+
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            $iscc = "ISCC.exe"
+          }
+
+          & $iscc installer\TwincatMcp.iss `
+            "/DSourceDir=$publishDir" `
+            "/DOutputDir=$installerDir" `
+            "/DAppVersion=$env:APP_VERSION"
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: twincat-xae-agent-tools-installer
+          path: artifacts/installer/*.exe
+          if-no-files-found: error
