@@ -159,43 +159,6 @@ These tools use ADS directly or use ADS as the final source of truth.
 | --- | --- |
 | `twincat_set_runtime_state` | Switch to Config or Run mode, handle known XAE dialogs, and verify the final ADS System Service state. Requires confirmation. |
 
-Use `twincat_set_runtime_state` when an agent needs one reliable command to enter Config or Run mode. First attach to or open XAE and select the active TwinCAT project so the tool can read the active target AMS Net ID.
-
-This is not a general-purpose ADS tool. XAE performs the requested mode switch, and ADS verifies the final System Service state on `AmsPort.SystemService` / port `10000`.
-
-Switch to Config mode:
-
-```json
-{
-  "state": "Config",
-  "confirm": true
-}
-```
-
-Switch to Run mode:
-
-```json
-{
-  "state": "Run",
-  "confirm": true
-}
-```
-
-Successful response shape:
-
-```json
-{
-  "requestedState": "Config",
-  "verifiedState": "Config",
-  "targetNetId": "169.254.162.243.1.1",
-  "success": true,
-  "lastErrorMessages": "",
-  "message": null
-}
-```
-
-If ADS verification times out, the tool returns `success: false` with the last ADS state it observed. If XAE is blocked by an unsupported modal dialog, the call fails with a clear message that includes the dialog title, dialog text, and available button labels.
-
 ## Developer Guide
 
 ### Projects
