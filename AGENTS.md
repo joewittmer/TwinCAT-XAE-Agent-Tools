@@ -48,6 +48,8 @@
 ## Git
 - Keep commit messages concise.
 - Use lowercase commit messages.
+- Add new features on a dedicated `feature/<name>` branch, creating one from `main` unless the user names an existing branch.
+- Keep `main` for stable fixes, documentation, release, and maintenance work unless the user explicitly asks for feature work there.
 
 ## Documentation
 - Keep README examples aligned with the implemented endpoint.
