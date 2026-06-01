@@ -94,6 +94,103 @@ internal sealed class TwinCatMcpTools
             twinCat.BuildSolutionAsync(waitForBuildToFinish, configuration));
     }
 
+    [McpServerTool(Name = "twinsafe_import_project", ReadOnly = false, Destructive = false, OpenWorld = false)]
+    [Description("Import an existing TwinSAFE safety project or archive under the SAFETY node (TISC).")]
+    public static Task<object> ImportTwinSafeProject(
+        TwinCatAutomationService twinCat,
+        [Description("Path to a TwinSAFE .splcproj project file or .tfzip archive.")] string projectPath,
+        [Description("Project name to use when copying or moving into the solution. Ignored for UseOriginalLocation.")] string? projectName = null,
+        [Description("Import mode: CopyToSolutionDirectory, MoveToSolutionDirectory, or UseOriginalLocation.")] string importMode = "CopyToSolutionDirectory")
+    {
+        return TwinCatToolCall.RunAsync(() =>
+            twinCat.ImportSafetyProjectAsync(projectPath, projectName, importMode));
+    }
+
+    [McpServerTool(Name = "twinsafe_loader_list_devices", ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [Description("Use TwinSAFE Loader to list available TwinSAFE logic components on an EtherCAT network.")]
+    public static Task<object> ListTwinSafeLoaderDevices(
+        TwinSafeLoaderService twinSafeLoader,
+        [Description("IPv4 address or host name of the EtherCAT Mailbox Gateway or, in AoE mode, the EtherCAT master.")] string gateway,
+        [Description("Optional AMS Net ID of the EtherCAT master for AoE mode.")] string? ams = null,
+        [Description("Optional local AMS Net ID for AoE mode.")] string? localAms = null,
+        [Description("Optional path to TwinSAFE_Loader.exe. Uses McpConfig:TwinSafeLoaderPath or PATH when omitted.")] string? loaderPath = null,
+        [Description("TwinSAFE Loader communication timeout in milliseconds.")] int timeoutMilliseconds = 10000,
+        [Description("Maximum time to wait for the TwinSAFE Loader process in milliseconds.")] int processTimeoutMilliseconds = 120000)
+    {
+        return TwinCatToolCall.RunAsync(() =>
+            twinSafeLoader.ListLogicDevicesAsync(
+                gateway,
+                ams,
+                localAms,
+                loaderPath,
+                timeoutMilliseconds,
+                processTimeoutMilliseconds));
+    }
+
+    [McpServerTool(Name = "twinsafe_loader_load_project", ReadOnly = false, Destructive = true, OpenWorld = false)]
+    [Description("Use TwinSAFE Loader to load a compiled safety project binary onto a TwinSAFE logic component. Requires confirm=true.")]
+    public static Task<object> LoadTwinSafeProject(
+        TwinSafeLoaderService twinSafeLoader,
+        [Description("IPv4 address or host name of the EtherCAT Mailbox Gateway or, in AoE mode, the EtherCAT master.")] string gateway,
+        [Description("TwinSAFE logic component user name.")] string user,
+        [Description("TwinSAFE logic component password. Passed to TwinSAFE Loader and redacted from returned command text.")] string password,
+        [Description("EtherCAT slave address of the TwinSAFE logic component.")] string slave,
+        [Description("Path to the compiled TwinSAFE project binary, usually a .bin file.")] string projectPath,
+        [Description("Optional AMS Net ID of the EtherCAT master for AoE mode.")] string? ams = null,
+        [Description("Optional local AMS Net ID for AoE mode.")] string? localAms = null,
+        [Description("Optional path to TwinSAFE_Loader.exe. Uses McpConfig:TwinSafeLoaderPath or PATH when omitted.")] string? loaderPath = null,
+        [Description("TwinSAFE Loader communication timeout in milliseconds.")] int timeoutMilliseconds = 10000,
+        [Description("Maximum time to wait for the TwinSAFE Loader process in milliseconds.")] int processTimeoutMilliseconds = 120000,
+        [Description("Must be true to load the safety project onto hardware.")] bool confirm = false)
+    {
+        return TwinCatToolCall.RunAsync(() =>
+            twinSafeLoader.LoadProjectAsync(
+                gateway,
+                ams,
+                localAms,
+                user,
+                password,
+                slave,
+                projectPath,
+                loaderPath,
+                timeoutMilliseconds,
+                processTimeoutMilliseconds,
+                confirm));
+    }
+
+    [McpServerTool(Name = "twinsafe_loader_activate_project", ReadOnly = false, Destructive = true, OpenWorld = false)]
+    [Description("Use TwinSAFE Loader to activate a loaded safety project on a TwinSAFE logic component. Requires confirm=true.")]
+    public static Task<object> ActivateTwinSafeProject(
+        TwinSafeLoaderService twinSafeLoader,
+        [Description("IPv4 address or host name of the EtherCAT Mailbox Gateway or, in AoE mode, the EtherCAT master.")] string gateway,
+        [Description("TwinSAFE logic component user name.")] string user,
+        [Description("TwinSAFE logic component password. Passed to TwinSAFE Loader and redacted from returned command text.")] string password,
+        [Description("EtherCAT slave address of the TwinSAFE logic component.")] string slave,
+        [Description("Path to the compiled TwinSAFE project binary, usually a .bin file.")] string projectPath,
+        [Description("Expected project CRC to activate, for example 0x2d63.")] string crc,
+        [Description("Optional AMS Net ID of the EtherCAT master for AoE mode.")] string? ams = null,
+        [Description("Optional local AMS Net ID for AoE mode.")] string? localAms = null,
+        [Description("Optional path to TwinSAFE_Loader.exe. Uses McpConfig:TwinSafeLoaderPath or PATH when omitted.")] string? loaderPath = null,
+        [Description("TwinSAFE Loader communication timeout in milliseconds.")] int timeoutMilliseconds = 10000,
+        [Description("Maximum time to wait for the TwinSAFE Loader process in milliseconds.")] int processTimeoutMilliseconds = 120000,
+        [Description("Must be true to activate the safety project on hardware.")] bool confirm = false)
+    {
+        return TwinCatToolCall.RunAsync(() =>
+            twinSafeLoader.ActivateProjectAsync(
+                gateway,
+                ams,
+                localAms,
+                user,
+                password,
+                slave,
+                projectPath,
+                crc,
+                loaderPath,
+                timeoutMilliseconds,
+                processTimeoutMilliseconds,
+                confirm));
+    }
+
     [McpServerTool(Name = "twincat_lookup_tree_item", ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Look up a TwinCAT tree item by path such as TIPC, TIID, TISM, or TIPC^Plc^Plc Project^POUs^MAIN.")]
     public static Task<object> LookupTreeItem(

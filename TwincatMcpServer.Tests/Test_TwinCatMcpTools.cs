@@ -18,6 +18,10 @@ public sealed class Test_TwinCatMcpTools
         "xae_close_solution",
         "xae_quit",
         "xae_build_solution",
+        "twinsafe_import_project",
+        "twinsafe_loader_list_devices",
+        "twinsafe_loader_load_project",
+        "twinsafe_loader_activate_project",
         "twincat_lookup_tree_item",
         "twincat_produce_xml",
         "twincat_consume_xml",
@@ -68,6 +72,8 @@ public sealed class Test_TwinCatMcpTools
         Assert.That(attributes["twincat_activate_configuration"].Destructive, Is.True);
         Assert.That(attributes["twincat_restart_runtime"].Destructive, Is.True);
         Assert.That(attributes["twincat_set_runtime_state"].Destructive, Is.True);
+        Assert.That(attributes["twinsafe_loader_load_project"].Destructive, Is.True);
+        Assert.That(attributes["twinsafe_loader_activate_project"].Destructive, Is.True);
         Assert.That(attributes["workspace_write_file"].Destructive, Is.True);
         Assert.That(attributes["workspace_replace_text"].Destructive, Is.True);
     }
@@ -84,6 +90,7 @@ public sealed class Test_TwinCatMcpTools
         Assert.That(attributes["twincat_produce_xml"].ReadOnly, Is.True);
         Assert.That(attributes["twincat_get_target_net_id"].ReadOnly, Is.True);
         Assert.That(attributes["twincat_get_last_error_messages"].ReadOnly, Is.True);
+        Assert.That(attributes["twinsafe_loader_list_devices"].ReadOnly, Is.True);
         Assert.That(attributes["workspace_info"].ReadOnly, Is.True);
         Assert.That(attributes["workspace_list_files"].ReadOnly, Is.True);
         Assert.That(attributes["workspace_get_file_info"].ReadOnly, Is.True);

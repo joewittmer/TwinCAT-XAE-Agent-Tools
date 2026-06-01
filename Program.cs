@@ -15,6 +15,7 @@ internal static class Program
         builder.Services.Configure<TwinCatAutomationOptions>(
             builder.Configuration.GetSection("McpConfig"));
         builder.Services.AddSingleton<TwinCatAutomationService>();
+        builder.Services.AddSingleton<TwinSafeLoaderService>();
         builder.Services.AddSingleton<WorkspaceService>();
         builder.Services
             .AddMcpServer()

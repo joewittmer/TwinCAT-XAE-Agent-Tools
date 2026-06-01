@@ -39,6 +39,7 @@ internal sealed class TwinCatAutomationService : IDisposable
             _options.Port,
             _options.BindAddress,
             configuredSolutionPath = _options.TwinCatSolutionPath,
+            configuredTwinSafeLoaderPath = _options.TwinSafeLoaderPath,
             _options.ProjectLoadTimeoutSeconds
         });
     }
@@ -62,6 +63,7 @@ internal sealed class TwinCatAutomationService : IDisposable
                 _options.Port,
                 _options.BindAddress,
                 configuredSolutionPath = _options.TwinCatSolutionPath,
+                configuredTwinSafeLoaderPath = _options.TwinSafeLoaderPath,
                 _options.ProjectLoadTimeoutSeconds,
                 xaeRunning = ActiveComObject.IsRunning(_options.XaeProgId),
                 connected = _dte is not null,
@@ -325,6 +327,26 @@ internal sealed class TwinCatAutomationService : IDisposable
                 path,
                 recursive,
                 xml = InvokeMethod(item, "ProduceXml", recursive)?.ToString()
+            };
+        });
+    }
+
+    public Task<object> ImportSafetyProjectAsync(string projectPath, string? projectName, string importMode)
+    {
+        return _dispatcher.InvokeAsync<object>(() =>
+        {
+            TwinSafeProjectImportMode mode = TwinSafeProjectImportModeParser.Parse(importMode);
+            string fullProjectPath = ResolveSafetyProjectPath(projectPath);
+            string childName = ResolveSafetyProjectName(projectName, mode);
+            object safety = LookupTreeItem("TISC");
+            object imported = InvokeMethod(safety, "CreateChild", childName, mode.Subtype, string.Empty, fullProjectPath);
+
+            return new
+            {
+                projectPath = fullProjectPath,
+                projectName = childName,
+                importMode = mode.Name,
+                imported = TreeItemSummary.From(imported, includeChildren: false, maxChildren: 0)
             };
         });
     }
@@ -949,6 +971,46 @@ internal sealed class TwinCatAutomationService : IDisposable
     private static string? FirstNotBlank(params string?[] values)
     {
         return values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+    }
+
+    private static string ResolveSafetyProjectPath(string projectPath)
+    {
+        if (string.IsNullOrWhiteSpace(projectPath))
+        {
+            throw new ArgumentException("Safety project path is required.", nameof(projectPath));
+        }
+
+        string fullPath = Path.GetFullPath(projectPath);
+        if (!File.Exists(fullPath))
+        {
+            throw new FileNotFoundException($"Safety project file not found: {fullPath}", fullPath);
+        }
+
+        string extension = Path.GetExtension(fullPath);
+        if (!string.Equals(extension, ".splcproj", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(extension, ".tfzip", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                $"Expected a TwinSAFE safety project file (.splcproj) or archive (.tfzip), got: {fullPath}",
+                nameof(projectPath));
+        }
+
+        return fullPath;
+    }
+
+    private static string ResolveSafetyProjectName(string? projectName, TwinSafeProjectImportMode mode)
+    {
+        if (mode == TwinSafeProjectImportMode.UseOriginalLocation)
+        {
+            return string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            throw new ArgumentException("Safety project name is required unless importMode is UseOriginalLocation.", nameof(projectName));
+        }
+
+        return projectName.Trim();
     }
 
     private sealed record TreeItemSummary(

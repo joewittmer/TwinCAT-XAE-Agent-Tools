@@ -14,6 +14,7 @@ public sealed class Test_TwinCatAutomationOptions
         Assert.That(options.Port, Is.EqualTo(5001));
         Assert.That(options.BindAddress, Is.EqualTo("127.0.0.1"));
         Assert.That(options.XaeProgId, Is.EqualTo("TcXaeShell.DTE.17.0"));
+        Assert.That(options.TwinSafeLoaderPath, Is.Null);
         Assert.That(options.ProjectLoadTimeoutSeconds, Is.EqualTo(30));
         Assert.That(options.WorkspaceMaxReadBytes, Is.EqualTo(1024 * 1024));
         Assert.That(options.WorkspaceMaxSearchFileBytes, Is.EqualTo(1024 * 1024));
@@ -29,6 +30,7 @@ public sealed class Test_TwinCatAutomationOptions
             ["McpConfig:BindAddress"] = "0.0.0.0",
             ["McpConfig:XaeProgId"] = "TcXaeShell.DTE.16.0",
             ["McpConfig:TwinCatSolutionPath"] = "C:\\Projects\\Machine\\Machine.sln",
+            ["McpConfig:TwinSafeLoaderPath"] = "C:\\TwinSAFE\\TwinSAFE_Loader.exe",
             ["McpConfig:ProjectLoadTimeoutSeconds"] = "45",
             ["McpConfig:WorkspaceRoot"] = "C:\\Projects\\Machine",
             ["McpConfig:WorkspaceMaxReadBytes"] = "2000000",
@@ -49,6 +51,7 @@ public sealed class Test_TwinCatAutomationOptions
         Assert.That(options.BindAddress, Is.EqualTo("0.0.0.0"));
         Assert.That(options.XaeProgId, Is.EqualTo("TcXaeShell.DTE.16.0"));
         Assert.That(options.TwinCatSolutionPath, Is.EqualTo("C:\\Projects\\Machine\\Machine.sln"));
+        Assert.That(options.TwinSafeLoaderPath, Is.EqualTo("C:\\TwinSAFE\\TwinSAFE_Loader.exe"));
         Assert.That(options.ProjectLoadTimeoutSeconds, Is.EqualTo(45));
         Assert.That(options.WorkspaceRoot, Is.EqualTo("C:\\Projects\\Machine"));
         Assert.That(options.WorkspaceMaxReadBytes, Is.EqualTo(2000000));

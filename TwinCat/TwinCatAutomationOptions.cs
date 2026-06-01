@@ -10,6 +10,8 @@ internal sealed class TwinCatAutomationOptions
 
     public string? TwinCatSolutionPath { get; set; }
 
+    public string? TwinSafeLoaderPath { get; set; }
+
     public int ProjectLoadTimeoutSeconds { get; set; } = 30;
 
     public string? WorkspaceRoot { get; set; }

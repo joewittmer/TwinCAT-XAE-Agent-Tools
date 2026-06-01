@@ -20,6 +20,8 @@ TwinCAT XAE Agent Tools gives the agent a bounded way to:
 - Select and build the active TwinCAT project.
 - Inspect the TwinCAT System Manager tree.
 - Export and import TwinCAT XML through XAE.
+- Import existing TwinSAFE safety projects under the `SAFETY` node.
+- List, load, and activate compiled TwinSAFE project binaries through TwinSAFE Loader.
 - Read or set the target AMS Net ID.
 - Switch the active TwinCAT target between Config and Run modes with ADS verification.
 - Activate the configuration or restart TwinCAT only after explicit confirmation.
@@ -32,6 +34,8 @@ This does not replace TwinCAT XAE. It gives an agent a controlled bridge to the 
 - Search POUs, GVLs, DUTs, XML, and helper code from one MCP connection.
 - Make reviewed edits inside the configured workspace.
 - Build the XAE solution and inspect recent TwinCAT errors.
+- Import a TwinSAFE `.splcproj` or `.tfzip` project into the open TwinCAT configuration.
+- List TwinSAFE logic components and load or activate a compiled safety `.bin` through TwinSAFE Loader.
 - Switch TwinCAT into Config mode before controlled system changes, or back to Run mode after activation.
 - Export TwinCAT tree item XML for review or controlled modification.
 - Work from another computer while XAE stays on the engineering workstation.
@@ -42,6 +46,7 @@ This does not replace TwinCAT XAE. It gives an agent a controlled bridge to the 
 - TwinCAT XAE installed
 - Codex or another MCP client
 - A TwinCAT Visual Studio solution (`.sln`) containing a TwinCAT project (`.tsproj`)
+- TwinSAFE Loader installed and reachable through `PATH`, `McpConfig:TwinSafeLoaderPath`, or the `loaderPath` tool argument when using TwinSAFE Loader tools
 - The TwinCAT XAE Agent Tools installer
 
 ## Start The Server
@@ -95,10 +100,14 @@ These TwinCAT tools require explicit `confirm: true` before they run:
 - `twincat_activate_configuration`
 - `twincat_restart_runtime`
 - `twincat_set_runtime_state`
+- `twinsafe_loader_load_project`
+- `twinsafe_loader_activate_project`
 
 `twincat_set_runtime_state` reports success only after ADS verification confirms the requested System Service state on the active target. The tool reads ADS state from `AmsPort.SystemService` / port `10000`; it does not rely on the XAE command returning successfully as proof that the target changed mode.
 
 During runtime mode switching, the server may confirm known XAE modal dialogs that match the requested direction. It confirms `Restart TwinCAT System in Config Mode` for Config requests and `Load I/O Devices` for Run requests. It does not automatically confirm `Activate Free Run`, because Free Run is not PLC Run. Unknown modal dialogs are reported with their title, text, and detected button labels.
+
+TwinSAFE Loader support is intentionally split into list, load, and activate tools. Loading transfers the compiled binary to the TwinSAFE logic component; activating requires the expected project CRC and a second explicit `confirm: true`. The tools do not prove that a safety application is correct for the machine. That validation remains the responsibility of qualified safety personnel and the project-specific safety process. TwinSAFE Loader requires the password as a command-line argument, so run these tools only on a trusted engineering workstation.
 
 ## Current Limits
 
@@ -106,6 +115,7 @@ During runtime mode switching, the server may confirm known XAE modal dialogs th
 - It does not expose `dotnet format`, because that formats .NET code and is not suitable for TwinCAT Structured Text.
 - It does not yet provide symbol-aware rename for C# or TwinCAT Structured Text.
 - It does not currently parse TwinCAT build errors into structured file/line diagnostics.
+- TwinSAFE Loader tools load already compiled safety project binaries. TwinSAFE project verification, CRC review, and binary generation remain part of the TwinSAFE/XAE workflow.
 - It does not allow arbitrary filesystem access outside the configured workspace root.
 
 ## Tool Reference
@@ -141,6 +151,10 @@ These tools work through TcXaeShell and the TwinCAT Automation Interface.
 | `xae_close_solution` | Close the open XAE solution. |
 | `xae_quit` | Quit TcXaeShell. |
 | `xae_build_solution` | Build the open XAE solution. |
+| `twinsafe_import_project` | Import an existing `.splcproj` or `.tfzip` under the `SAFETY` node. |
+| `twinsafe_loader_list_devices` | List TwinSAFE logic components through TwinSAFE Loader. |
+| `twinsafe_loader_load_project` | Load a compiled safety project binary onto a TwinSAFE logic component. Requires confirmation. |
+| `twinsafe_loader_activate_project` | Activate a loaded TwinSAFE project with an expected CRC. Requires confirmation. |
 | `twincat_lookup_tree_item` | Look up a TwinCAT tree item and optionally include children or XML. |
 | `twincat_produce_xml` | Export `ProduceXml` for a TwinCAT tree item. |
 | `twincat_consume_xml` | Import XML into a TwinCAT tree item. Requires confirmation. |
@@ -171,9 +185,12 @@ These tools use ADS directly or use ADS as the final source of truth.
 
 - Workspace tools operate on files under the configured workspace root.
 - TwinCAT/XAE tools operate through TcXaeShell and the TwinCAT Automation Interface COM APIs.
+- TwinSAFE Loader tools run the Beckhoff TwinSAFE Loader executable through `ProcessStartInfo.ArgumentList`; password values are passed to the loader process but redacted from returned command text.
 - `workspace_read_file` reads files on disk. `twincat_produce_xml` exports the live TwinCAT tree representation from XAE.
 - `workspace_write_file` and `workspace_replace_text` edit files. They do not automatically activate, download, or restart TwinCAT.
 - `twincat_consume_xml` changes the open TwinCAT project through XAE. It is more powerful than a text edit and requires confirmation.
+- `twinsafe_import_project` intentionally overlaps with `twincat_create_child` for the documented Safety-node import path. The TwinSAFE-specific tool adds file-extension validation and named import modes for `.splcproj` and `.tfzip` sources.
+- `twinsafe_loader_load_project` and `twinsafe_loader_activate_project` intentionally overlap with the two TwinSAFE Loader command-line phases. They are separate tools so an agent can report and review the project CRC before activation.
 - `twincat_set_runtime_state` intentionally overlaps with `twincat_restart_runtime` for Run mode. Use `twincat_set_runtime_state` when the final ADS System Service state must be verified.
 - ADS writes are not used for Config mode switching because some targets report `Service is not supported by server` for System Service state writes. XAE performs the switch; ADS verifies the final state.
 - `twincat_lookup_tree_item` is for tree metadata and child discovery. `twincat_produce_xml` is the dedicated XML export tool; use `includeXml` on lookup only when one combined response is useful.
@@ -189,6 +206,7 @@ The server reads `McpConfig` from `appsettings.json` and environment variables.
     "BindAddress": "127.0.0.1",
     "XaeProgId": "TcXaeShell.DTE.17.0",
     "TwinCatSolutionPath": "C:\\Projects\\MyMachine\\MyMachine.sln",
+    "TwinSafeLoaderPath": "C:\\TwinSAFE\\TwinSAFE_Loader.exe",
     "ProjectLoadTimeoutSeconds": 30,
     "WorkspaceRoot": "C:\\Projects\\MyMachine",
     "WorkspaceMaxReadBytes": 1048576,
@@ -250,6 +268,7 @@ These are good next steps for deeper project development:
 - Project summary tools for PLC projects, POUs, GVLs, DUTs, tasks, I/O devices, and mappings.
 - Friendly creation tools for POUs, GVLs, DUTs, tasks, and common I/O nodes.
 - Safer XML edit planning that previews `ProduceXml` diffs before `ConsumeXml`.
+- TwinSAFE verification/build command integration if a stable supported automation surface is available.
 - TwinCAT-aware rename for PLC objects and Structured Text references.
 - Symbol-aware rename for C# using Roslyn workspace APIs.
 - Structured Text formatting after choosing a parser-backed formatter that works for TwinCAT syntax.
@@ -265,7 +284,9 @@ The MCP C# SDK supplies the server transport and tool registration used here. Th
 - [Beckhoff Automation Interface manual PDF](https://download.beckhoff.com/download/document/automation/twincat3/TC3_Automation_Interface_EN.pdf)
 - [Beckhoff ITcSysManager](https://infosys.beckhoff.com/content/1033/tc3_automationinterface/242753675.html)
 - [Beckhoff tree item browsing](https://infosys.beckhoff.com/content/1033/tc3_automationinterface/242723339.html)
+- [Beckhoff creating and handling Safety projects](https://infosys.beckhoff.com/content/1033/tc3_automationinterface/2633259147.html)
 - [Beckhoff ITcSmTreeItem](https://infosys.beckhoff.com/content/1033/tc3_automationinterface/242779659.html)
 - [Beckhoff custom TreeItem XML parameters](https://infosys.beckhoff.com/content/1033/tc3_automationinterface/242724875.html)
 - [Beckhoff ITcSmTreeItem ConsumeXml](https://infosys.beckhoff.com/content/1033/tc3_automationinterface/242834315.html)
 - [Beckhoff TwinCAT ADS .NET](https://www.nuget.org/packages/Beckhoff.TwinCAT.Ads/)
+- [Beckhoff TwinSAFE Loader documentation](https://download.beckhoff.com/download/Document/automation/twinsafe/twinsafe_loader_en.pdf)
