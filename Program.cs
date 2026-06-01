@@ -1,95 +1,44 @@
-using System;
-using System.IO;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using ModelContextProtocol.Server;
+using TwincatMcpServer.Mcp;
+using TwincatMcpServer.TwinCat;
+using TwincatMcpServer.Workspace;
 
 namespace TwincatMcpServer;
 
-class Program
+internal static class Program
 {
-    static async Task Main(string[] args)
+    public static void Main(string[] args)
     {
-        // Setup Configuration
-        var config = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-            .Build();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-        var port = config["McpConfig:Port"];
-        var twinCatPath = config["McpConfig:TwinCatProjectPath"];
-
-        // Log configuration to Stderr so it doesn't interfere with Stdout JSON-RPC
-        Console.Error.WriteLine($"[Config] Port: {port}");
-        Console.Error.WriteLine($"[Config] TwinCAT Path: {twinCatPath}");
-
-        while (true)
-        {
-            var line = await Console.In.ReadLineAsync();
-            if (string.IsNullOrEmpty(line)) break;
-
-            try 
+        builder.Services.Configure<TwinCatAutomationOptions>(
+            builder.Configuration.GetSection("McpConfig"));
+        builder.Services.AddSingleton<TwinCatAutomationService>();
+        builder.Services.AddSingleton<WorkspaceService>();
+        builder.Services
+            .AddMcpServer()
+            .WithHttpTransport(options =>
             {
-                var request = JsonNode.Parse(line);
-                if (request == null) continue;
+                options.Stateless = true;
+            })
+            .WithTools<TwinCatMcpTools>()
+            .WithTools<WorkspaceMcpTools>();
 
-                string method = request["method"]?.ToString() ?? "";
-                var id = request["id"];
+        TwinCatAutomationOptions options = builder.Configuration
+            .GetSection("McpConfig")
+            .Get<TwinCatAutomationOptions>() ?? new TwinCatAutomationOptions();
+        builder.WebHost.UseUrls($"http://{options.BindAddress}:{options.Port}");
 
-                if (method == "initialize")
-                {
-                    SendResponse(id, new
-                    {
-                        protocolVersion = "2024-11-05",
-                        capabilities = new { tools = new { } },
-                        serverInfo = new { name = "TwincatMcpServer", version = "1.2.0" }
-                    });
-                }
-                else if (method == "tools/list")
-                {
-                    SendResponse(id, new {
-                        tools = new[] {
-                            new { name = "read_file", description = "Read content from a file", inputSchema = new { type = "object", properties = new { path = new { type = "string" } }, required = new[] { "path" } } },
-                            new { name = "write_file", description = "Write content to a file", inputSchema = new { type = "object", properties = new { path = new { type = "string" }, content = new { type = "string" } }, required = new[] { "path", "content" } } },
-                            new { name = "get_config", description = "Get current server configuration", inputSchema = new { type = "object", properties = new { } } }
-                        }
-                    });
-                }
-                else if (method == "tools/call")
-                {
-                    string toolName = request["params"]?["name"]?.ToString() ?? "";
-                    var toolArgs = request["params"]?["arguments"];
+        WebApplication app = builder.Build();
 
-                    if (toolName == "read_file")
-                    {
-                        string path = toolArgs?["path"]?.ToString() ?? "";
-                        if (File.Exists(path)) SendToolResult(id, await File.ReadAllTextAsync(path));
-                        else SendError(id, "File not found");
-                    }
-                    else if (toolName == "write_file")
-                    {
-                        string path = toolArgs?["path"]?.ToString() ?? "";
-                        string content = toolArgs?["content"]?.ToString() ?? "";
-                        await File.WriteAllTextAsync(path, content);
-                        SendToolResult(id, $"File written to {path}");
-                    }
-                    else if (toolName == "get_config")
-                    {
-                        SendToolResult(id, $"Port: {port}, TwinCAT Project: {twinCatPath}");
-                    }
-                }
-            }
-            catch (Exception ex) { Console.Error.WriteLine($"Error: {ex.Message}"); }
-        }
+        app.MapGet("/health", () => new
+        {
+            name = "TwinCAT XAE Agent Tools",
+            endpoint = "/mcp"
+        });
+        app.MapMcp("/mcp");
+
+        app.Run();
     }
-
-    static void SendResponse(JsonNode? id, object result) => 
-        Console.WriteLine(JsonSerializer.Serialize(new { jsonrpc = "2.0", id = id, result = result }));
-
-    static void SendToolResult(JsonNode? id, string text) => 
-        SendResponse(id, new { content = new[] { new { type = "text", text = text } } });
-
-    static void SendError(JsonNode? id, string message) => 
-        Console.WriteLine(JsonSerializer.Serialize(new { jsonrpc = "2.0", id = id, error = new { code = -32000, message = message } }));
 }

@@ -1,0 +1,257 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="TwincatMcp.Tray.Views.MainWindow"
+        Title="TwinCAT XAE Agent Tools"
+        Width="820"
+        Height="620"
+        MinWidth="620"
+        MinHeight="540"
+        CanResize="True">
+  <Grid RowDefinitions="Auto,*"
+        Margin="20"
+        RowSpacing="16">
+    <StackPanel Spacing="4">
+      <TextBlock Text="TwinCAT XAE Agent Tools"
+                 FontSize="22"
+                 FontWeight="SemiBold" />
+      <TextBlock Text="{Binding Status}" />
+    </StackPanel>
+
+    <TabControl Grid.Row="1">
+      <TabItem Header="General">
+        <ScrollViewer>
+          <StackPanel Spacing="14"
+                      Margin="0,14,0,0">
+            <Grid ColumnDefinitions="140,*,Auto"
+                  RowDefinitions="Auto,Auto"
+                  RowSpacing="10"
+                  ColumnSpacing="10">
+              <TextBlock Grid.Row="0"
+                         Text="Solution"
+                         VerticalAlignment="Center" />
+              <TextBox Grid.Row="0"
+                       Grid.Column="1"
+                       Name="SolutionPathBox"
+                       Text="{Binding Settings.TwinCatSolutionPath}" />
+              <Button Grid.Row="0"
+                      Grid.Column="2"
+                      Content="Browse"
+                      Click="BrowseSolution_Click" />
+
+              <TextBlock Grid.Row="1"
+                         Text="Server"
+                         VerticalAlignment="Center" />
+              <StackPanel Grid.Row="1"
+                          Grid.Column="1"
+                          Grid.ColumnSpan="2"
+                          Orientation="Horizontal"
+                          Spacing="8">
+                <Button Content="Enable"
+                        MinWidth="92"
+                        Click="StartServer_Click" />
+                <Button Content="Disable"
+                        MinWidth="92"
+                        Click="StopServer_Click" />
+              </StackPanel>
+            </Grid>
+
+            <Button Content="Apply"
+                    HorizontalAlignment="Left"
+                    MinWidth="92"
+                    Click="Apply_Click" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="Agents">
+        <TabControl Margin="0,14,0,0">
+          <TabItem Header="Codex">
+            <ScrollViewer>
+              <StackPanel Spacing="14"
+                          Margin="0,14,0,0">
+                <TextBlock Text="Codex"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="Create or edit %USERPROFILE%\.codex\config.toml. Paste this section. For LAN access, enable Allow LAN access and replace 127.0.0.1 with the XAE engineering workstation IP address."
+                           TextWrapping="Wrap" />
+
+                <TextBox Text="{Binding LocalCodexConfigToml}"
+                         IsReadOnly="True"
+                         AcceptsReturn="True"
+                         TextWrapping="NoWrap"
+                         FontFamily="Consolas"
+                         Height="86" />
+
+                <Button Content="Copy configuration"
+                        HorizontalAlignment="Left"
+                        Click="CopyCodexConfig_Click" />
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+
+          <TabItem Header="Claude">
+            <ScrollViewer>
+              <StackPanel Spacing="14"
+                          Margin="0,14,0,0">
+                <TextBlock Text="Claude Code"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="Create or edit a project .mcp.json. Paste this JSON. For LAN access, enable Allow LAN access and replace 127.0.0.1 with the XAE engineering workstation IP address."
+                           TextWrapping="Wrap" />
+
+                <TextBox Text="{Binding ClaudeCodeJson}"
+                         IsReadOnly="True"
+                         AcceptsReturn="True"
+                         TextWrapping="NoWrap"
+                         FontFamily="Consolas"
+                         Height="150" />
+
+                <Button Content="Copy configuration"
+                        HorizontalAlignment="Left"
+                        Click="CopyClaudeConfig_Click" />
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+
+          <TabItem Header="Other">
+            <ScrollViewer>
+              <StackPanel Spacing="14"
+                          Margin="0,14,0,0">
+                <TextBlock Text="Other MCP clients"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="Use this for MCP clients that support Streamable HTTP, such as opencode, Agent Zero, or other agent tools. Paste the URL or JSON where the client accepts MCP server settings. For LAN access, enable Allow LAN access and replace 127.0.0.1 with the XAE engineering workstation IP address."
+                           TextWrapping="Wrap" />
+
+                <TextBox Text="{Binding OtherClientInstructions}"
+                         IsReadOnly="True"
+                         AcceptsReturn="True"
+                         TextWrapping="NoWrap"
+                         FontFamily="Consolas"
+                         Height="190" />
+
+                <Button Content="Copy configuration"
+                        HorizontalAlignment="Left"
+                        Click="CopyOtherConfig_Click" />
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+        </TabControl>
+      </TabItem>
+
+      <TabItem Header="Advanced">
+        <ScrollViewer>
+          <StackPanel Spacing="14"
+                      Margin="0,14,0,0">
+            <TextBlock Text="Server network"
+                       FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="140,*"
+                  RowDefinitions="Auto,Auto,Auto"
+                  RowSpacing="10"
+                  ColumnSpacing="10">
+              <TextBlock Grid.Row="0"
+                         Text="Port"
+                         VerticalAlignment="Center" />
+              <NumericUpDown Grid.Row="0"
+                             Grid.Column="1"
+                             Minimum="1"
+                             Maximum="65535"
+                             Increment="1"
+                             ValueChanged="SettingsChanged"
+                             Value="{Binding Settings.Port}" />
+
+              <TextBlock Grid.Row="1"
+                         Text="LAN access"
+                         VerticalAlignment="Center" />
+              <CheckBox Grid.Row="1"
+                        Grid.Column="1"
+                        Content="Allow LAN access"
+                        IsChecked="{Binding Settings.AllowLanAccess}"
+                        Checked="SettingsChanged"
+                        Unchecked="SettingsChanged" />
+
+              <TextBlock Grid.Row="2"
+                         Text="MCP URL"
+                         VerticalAlignment="Center" />
+              <TextBox Grid.Row="2"
+                       Grid.Column="1"
+                       Text="{Binding McpUrl}"
+                       IsReadOnly="True" />
+            </Grid>
+
+            <TextBlock Text="Current configuration"
+                       FontWeight="SemiBold" />
+            <TextBox Text="{Binding CurrentConfigurationText}"
+                     IsReadOnly="True"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     FontFamily="Consolas"
+                     Height="200" />
+
+            <TextBlock Text="TwinCAT automation"
+                       FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="140,*"
+                  RowDefinitions="Auto,Auto"
+                  RowSpacing="10"
+                  ColumnSpacing="10">
+              <TextBlock Grid.Row="0"
+                         Text="XAE ProgID"
+                         VerticalAlignment="Center" />
+              <TextBox Grid.Row="0"
+                       Grid.Column="1"
+                       Text="{Binding Settings.XaeProgId}"
+                       TextChanged="SettingsChanged" />
+
+              <TextBlock Grid.Row="1"
+                         Text="Load timeout"
+                         VerticalAlignment="Center" />
+              <NumericUpDown Grid.Row="1"
+                             Grid.Column="1"
+                             Minimum="1"
+                             Maximum="600"
+                             Increment="1"
+                             ValueChanged="SettingsChanged"
+                             Value="{Binding Settings.ProjectLoadTimeoutSeconds}" />
+            </Grid>
+
+            <Button Content="Apply"
+                    HorizontalAlignment="Left"
+                    MinWidth="92"
+                    Click="Apply_Click" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="About">
+        <ScrollViewer>
+          <StackPanel Spacing="14"
+                      Margin="0,14,0,0">
+            <TextBlock Text="{Binding ProductName}"
+                       FontSize="18"
+                       FontWeight="SemiBold" />
+            <TextBlock Text="{Binding ProductDescription}"
+                       TextWrapping="Wrap" />
+
+            <StackPanel Orientation="Horizontal"
+                        Spacing="8">
+              <TextBlock Text="Version"
+                         FontWeight="SemiBold" />
+              <TextBlock Text="{Binding AppVersion}" />
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+
+    <Border Grid.RowSpan="2"
+            ZIndex="10"
+            IsVisible="{Binding IsNotificationVisible}"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            MaxWidth="520"
+            Padding="14,10"
+            Background="#2B2F36"
+            CornerRadius="6">
+      <TextBlock Text="{Binding NotificationMessage}"
+                 Foreground="White"
+                 TextWrapping="Wrap" />
+    </Border>
+  </Grid>
+</Window>
