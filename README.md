@@ -243,8 +243,8 @@ Pushes to `main` run the `Build installer` GitHub Actions workflow. The workflow
 Pushing a version tag also creates or updates a GitHub release with the installer attached:
 
 ```powershell
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 Version information is centralized in `Directory.Build.props`. Bump `Version`, `AssemblyVersion`, and `FileVersion` there before building a release; the installer filename uses the same `Version` value.
