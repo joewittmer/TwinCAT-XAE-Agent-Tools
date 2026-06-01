@@ -6,7 +6,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Assets\tray.ico</ApplicationIcon>
-    <AssemblyName>TwinCAT XAE Agent Tools</AssemblyName>
     <Product>TwinCAT XAE Agent Tools</Product>
     <AssemblyTitle>TwinCAT XAE Agent Tools</AssemblyTitle>
   </PropertyGroup>

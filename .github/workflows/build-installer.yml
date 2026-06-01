@@ -77,13 +77,19 @@ jobs:
             -p:DebugType=None `
             -p:DebugSymbols=false
 
-          $expectedFile = Join-Path $publishDir "TwinCAT XAE Agent Tools.exe"
-          if (-not (Test-Path -LiteralPath $expectedFile)) {
-            throw "Expected published file was not found: $expectedFile"
+          $publishedFile = Join-Path $publishDir "TwincatMcp.Tray.exe"
+          $releaseFile = Join-Path $publishDir "TwinCAT XAE Agent Tools.exe"
+          if (-not (Test-Path -LiteralPath $publishedFile)) {
+            throw "Expected published file was not found: $publishedFile"
+          }
+
+          Move-Item -LiteralPath $publishedFile -Destination $releaseFile -Force
+          if (-not (Test-Path -LiteralPath $releaseFile)) {
+            throw "Expected release file was not found: $releaseFile"
           }
 
           $extraFiles = @(Get-ChildItem -LiteralPath $publishDir -File |
-            Where-Object { $_.FullName -ne $expectedFile }
+            Where-Object { $_.FullName -ne $releaseFile }
           )
           if ($extraFiles.Count -gt 0) {
             $extraFileList = $extraFiles.FullName -join ", "
