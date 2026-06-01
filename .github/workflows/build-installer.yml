@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main
+    tags:
+      - v*
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   BUILD_CONFIGURATION: Release
@@ -112,3 +114,27 @@ jobs:
           name: twincat-xae-agent-tools-installer
           path: artifacts/installer/*.exe
           if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tagName = $env:GITHUB_REF_NAME
+          $installerFiles = Get-ChildItem artifacts\installer\*.exe
+          if ($installerFiles.Count -eq 0) {
+            throw "No installer files were found to upload to the release."
+          }
+
+          $assetPaths = $installerFiles | ForEach-Object { $_.FullName }
+          gh release view $tagName *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tagName `
+              --title "TwinCAT XAE Agent Tools $tagName" `
+              --generate-notes `
+              --verify-tag
+          }
+
+          foreach ($assetPath in $assetPaths) {
+            gh release upload $tagName $assetPath --clobber
+          }

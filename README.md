@@ -258,6 +258,13 @@ Unit tests cover configuration defaults and binding, workspace path safety, file
 
 Pushes to `main` run the `Build installer` GitHub Actions workflow. The workflow builds and tests the solution, publishes the server and tray app together as a self-contained `win-x64` application, builds the Inno Setup installer, and uploads the installer executable as the `twincat-xae-agent-tools-installer` workflow artifact.
 
+Pushing a version tag also creates or updates a GitHub release with the installer attached:
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
+
 Version information is centralized in `Directory.Build.props`. Bump `Version`, `AssemblyVersion`, and `FileVersion` there before building a release; the installer filename uses the same `Version` value.
 
 ### Future Features
