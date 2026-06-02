@@ -75,6 +75,45 @@ public sealed class Test_TwinCatRuntimeState
     }
 
     [Test]
+    public void Test_DialogPolicy_ConfirmsExternalFileReloadPrompt()
+    {
+        TwinCatModalDialog dialog = new(
+            IntPtr.Zero,
+            "TcXaeShell",
+            "C:\\Projects\\Machine\\MAIN.TcPOU File has been changed outside the environment. Reload the new file?",
+            [
+                new TwinCatModalDialogButton(IntPtr.Zero, "Yes"),
+                new TwinCatModalDialogButton(IntPtr.Zero, "No"),
+                new TwinCatModalDialogButton(IntPtr.Zero, "Cancel")
+            ]);
+
+        TwinCatModalDialogDecision generalDecision = TwinCatModalDialogPolicy.Decide(dialog);
+        TwinCatModalDialogDecision runtimeDecision = TwinCatModalDialogPolicy.Decide(
+            dialog,
+            TwinCatRuntimeSwitchDirection.ToRun);
+
+        Assert.That(generalDecision.ShouldConfirm, Is.True);
+        Assert.That(generalDecision.ShouldBlock, Is.False);
+        Assert.That(runtimeDecision.ShouldConfirm, Is.True);
+    }
+
+    [Test]
+    public void Test_DialogPolicy_BlocksRuntimeDialogsOutsideRuntimeRequest()
+    {
+        TwinCatModalDialog dialog = new(
+            IntPtr.Zero,
+            "TwinCAT XAE",
+            "Restart TwinCAT System in Config Mode?",
+            []);
+
+        TwinCatModalDialogDecision decision = TwinCatModalDialogPolicy.Decide(dialog);
+
+        Assert.That(decision.ShouldConfirm, Is.False);
+        Assert.That(decision.ShouldBlock, Is.True);
+        Assert.That(decision.BlockReason, Does.Contain("outside a runtime-state request"));
+    }
+
+    [Test]
     public void Test_DialogPolicy_DeclinesActivateFreeRunForConfigRequests()
     {
         TwinCatModalDialog dialog = new(

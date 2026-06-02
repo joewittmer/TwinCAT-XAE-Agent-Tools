@@ -35,6 +35,13 @@ internal enum TwinCatRuntimeSwitchDirection
     ToRun
 }
 
+internal enum TwinCatModalDialogScope
+{
+    General,
+    RuntimeSwitchToConfig,
+    RuntimeSwitchToRun
+}
+
 internal enum TwinCatModalDialogAction
 {
     Confirm,
@@ -45,34 +52,75 @@ internal enum TwinCatModalDialogAction
 
 internal static class TwinCatModalDialogPolicy
 {
+    public static TwinCatModalDialogDecision Decide(TwinCatModalDialog dialog)
+    {
+        return Decide(dialog, TwinCatModalDialogScope.General);
+    }
+
     public static TwinCatModalDialogDecision Decide(
         TwinCatModalDialog dialog,
         TwinCatRuntimeSwitchDirection direction)
     {
+        TwinCatModalDialogScope scope = direction == TwinCatRuntimeSwitchDirection.ToConfig
+            ? TwinCatModalDialogScope.RuntimeSwitchToConfig
+            : TwinCatModalDialogScope.RuntimeSwitchToRun;
+
+        return Decide(dialog, scope);
+    }
+
+    private static TwinCatModalDialogDecision Decide(
+        TwinCatModalDialog dialog,
+        TwinCatModalDialogScope scope)
+    {
         string content = $"{dialog.Title}\n{dialog.Text}";
 
-        if (Contains(content, "Restart TwinCAT System in Config Mode"))
-        {
-            return direction == TwinCatRuntimeSwitchDirection.ToConfig
-                ? TwinCatModalDialogDecision.Confirm
-                : TwinCatModalDialogDecision.Block(
-                    "XAE is asking to restart TwinCAT in Config mode while Run mode was requested.");
-        }
-
-        if (Contains(content, "Load I/O Devices"))
+        if (IsExternalFileReloadPrompt(content))
         {
             return TwinCatModalDialogDecision.Confirm;
         }
 
+        if (Contains(content, "Restart TwinCAT System in Config Mode"))
+        {
+            if (scope == TwinCatModalDialogScope.RuntimeSwitchToConfig)
+            {
+                return TwinCatModalDialogDecision.Confirm;
+            }
+
+            string reason = scope == TwinCatModalDialogScope.RuntimeSwitchToRun
+                ? "XAE is asking to restart TwinCAT in Config mode while Run mode was requested."
+                : "XAE is asking to restart TwinCAT in Config mode outside a runtime-state request.";
+            return TwinCatModalDialogDecision.Block(reason);
+        }
+
+        if (Contains(content, "Load I/O Devices"))
+        {
+            return scope == TwinCatModalDialogScope.General
+                ? TwinCatModalDialogDecision.Block(
+                    "XAE is asking to load I/O devices outside a runtime-state request.")
+                : TwinCatModalDialogDecision.Confirm;
+        }
+
         if (Contains(content, "Activate Free Run"))
         {
-            return direction == TwinCatRuntimeSwitchDirection.ToConfig
-                ? TwinCatModalDialogDecision.Decline
-                : TwinCatModalDialogDecision.DeclineAndBlock(
-                    "XAE is asking to activate Free Run. This tool does not automatically confirm Free Run because it is not PLC Run.");
+            if (scope == TwinCatModalDialogScope.RuntimeSwitchToConfig)
+            {
+                return TwinCatModalDialogDecision.Decline;
+            }
+
+            return scope == TwinCatModalDialogScope.RuntimeSwitchToRun
+                ? TwinCatModalDialogDecision.DeclineAndBlock(
+                    "XAE is asking to activate Free Run. This tool does not automatically confirm Free Run because it is not PLC Run.")
+                : TwinCatModalDialogDecision.Block(
+                    "XAE is asking to activate Free Run outside a runtime-state request.");
         }
 
         return TwinCatModalDialogDecision.Block("XAE is blocked by an unrecognized modal dialog.");
+    }
+
+    internal static bool IsExternalFileReloadPrompt(string content)
+    {
+        return Contains(content, "File has been changed outside the environment") &&
+            Contains(content, "Reload the new file");
     }
 
     private static bool Contains(string text, string value)
@@ -462,7 +510,8 @@ internal static class TwinCatModalDialogInspector
     private static bool IsRecognizedContent(string title, string text)
     {
         string content = $"{title}\n{text}";
-        return content.Contains("Restart TwinCAT System in Config Mode", StringComparison.OrdinalIgnoreCase) ||
+        return TwinCatModalDialogPolicy.IsExternalFileReloadPrompt(content) ||
+            content.Contains("Restart TwinCAT System in Config Mode", StringComparison.OrdinalIgnoreCase) ||
             content.Contains("Load I/O Devices", StringComparison.OrdinalIgnoreCase) ||
             content.Contains("Activate Free Run", StringComparison.OrdinalIgnoreCase);
     }

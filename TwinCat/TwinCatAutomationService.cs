@@ -15,6 +15,7 @@ internal sealed class TwinCatAutomationService : IDisposable
     private const int XaeCommandRetryTimeoutMilliseconds = 30_000;
     private const int XaeCommandRetryDelayMilliseconds = 100;
     private const int XaeCommandDialogPollMilliseconds = 50;
+    private const int XaeModalDialogHandleLimit = 10;
     private const int RpcCallRejected = unchecked((int)0x80010001);
     private const int RpcServerCallRetryLater = unchecked((int)0x8001010A);
 
@@ -394,6 +395,8 @@ internal sealed class TwinCatAutomationService : IDisposable
 
     private void AttachOrLaunchCore(bool showWindow)
     {
+        TryHandleModalDialog();
+
         if (_dte is null)
         {
             if (ActiveComObject.IsRunning(_options.XaeProgId))
@@ -414,6 +417,7 @@ internal sealed class TwinCatAutomationService : IDisposable
             }
         }
 
+        TryHandleModalDialog();
         TrySetProperty(_dte, "UserControl", true);
         TrySetMainWindowVisible(showWindow);
     }
@@ -452,8 +456,10 @@ internal sealed class TwinCatAutomationService : IDisposable
             throw new ArgumentException($"XAE automation opens Visual Studio solution files. Expected .sln, got: {solutionPath}");
         }
 
+        TryHandleModalDialog();
         object solution = GetProperty(EnsureDte(), "Solution");
         InvokeMethod(solution, "Open", solutionPath);
+        TryHandleModalDialog();
         _openSolutionPath = solutionPath;
         SetActiveProjectCore(projectIndex, projectName);
     }
@@ -492,6 +498,8 @@ internal sealed class TwinCatAutomationService : IDisposable
 
         while (DateTime.UtcNow < deadline)
         {
+            TryHandleModalDialog();
+
             try
             {
                 object projects = GetProjects();
@@ -721,15 +729,40 @@ internal sealed class TwinCatAutomationService : IDisposable
         return new RuntimeStateSnapshot(state.AdsState, state.DeviceState);
     }
 
+    private bool TryHandleModalDialog()
+    {
+        return TryHandleModalDialogs(TwinCatModalDialogPolicy.Decide);
+    }
+
     private bool TryHandleModalDialog(TwinCatRuntimeSwitchDirection direction)
     {
-        TwinCatModalDialog? dialog = TwinCatModalDialogInspector.FindModalDialog(TryGetMainWindowHandle());
-        if (dialog is null)
+        return TryHandleModalDialogs(dialog => TwinCatModalDialogPolicy.Decide(dialog, direction));
+    }
+
+    private bool TryHandleModalDialogs(Func<TwinCatModalDialog, TwinCatModalDialogDecision> decide)
+    {
+        bool handledAny = false;
+
+        for (int attempt = 0; attempt < XaeModalDialogHandleLimit; attempt++)
         {
-            return false;
+            TwinCatModalDialog? dialog = TwinCatModalDialogInspector.FindModalDialog(TryGetMainWindowHandle());
+            if (dialog is null)
+            {
+                return handledAny;
+            }
+
+            TwinCatModalDialogDecision decision = decide(dialog);
+            HandleModalDialogDecision(dialog, decision);
+            handledAny = true;
         }
 
-        TwinCatModalDialogDecision decision = TwinCatModalDialogPolicy.Decide(dialog, direction);
+        return handledAny;
+    }
+
+    private static void HandleModalDialogDecision(
+        TwinCatModalDialog dialog,
+        TwinCatModalDialogDecision decision)
+    {
         if (decision.ShouldConfirm)
         {
             if (!TwinCatModalDialogInspector.TryClickConfirmationButton(dialog, out _))
@@ -751,8 +784,6 @@ internal sealed class TwinCatAutomationService : IDisposable
         {
             throw new InvalidOperationException($"{decision.BlockReason} {dialog.FormatForError()}");
         }
-
-        return true;
     }
 
     private IntPtr TryGetMainWindowHandle()

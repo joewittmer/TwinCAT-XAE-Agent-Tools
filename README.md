@@ -100,6 +100,8 @@ These TwinCAT tools require explicit `confirm: true` before they run:
 
 During runtime mode switching, the server may confirm known XAE modal dialogs that match the requested direction. It confirms `Restart TwinCAT System in Config Mode` for Config requests and `Load I/O Devices` for Run requests. It does not automatically confirm `Activate Free Run`, because Free Run is not PLC Run. Unknown modal dialogs are reported with their title, text, and detected button labels.
 
+During attach, open, and project selection, the server may also confirm XAE's `File has been changed outside the environment. Reload the new file?` editor prompt by choosing `Yes`, so XAE reloads the file from disk after workspace edits.
+
 ## Current Limits
 
 - It does not currently format Structured Text.
