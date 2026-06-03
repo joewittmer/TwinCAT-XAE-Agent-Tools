@@ -98,6 +98,28 @@ public sealed class Test_TwinCatRuntimeState
     }
 
     [Test]
+    public void Test_DialogPolicy_ConfirmsExternalProjectReloadPrompt()
+    {
+        TwinCatModalDialog dialog = new(
+            IntPtr.Zero,
+            "TcXaeShell",
+            "The project file 'C:\\Projects\\Machine\\PlcProgram.plcproj' has been modified outside of TwinCAT XAE. Do you want to reload the project?",
+            [
+                new TwinCatModalDialogButton(IntPtr.Zero, "Yes"),
+                new TwinCatModalDialogButton(IntPtr.Zero, "No")
+            ]);
+
+        TwinCatModalDialogDecision generalDecision = TwinCatModalDialogPolicy.Decide(dialog);
+        TwinCatModalDialogDecision runtimeDecision = TwinCatModalDialogPolicy.Decide(
+            dialog,
+            TwinCatRuntimeSwitchDirection.ToRun);
+
+        Assert.That(generalDecision.ShouldConfirm, Is.True);
+        Assert.That(generalDecision.ShouldBlock, Is.False);
+        Assert.That(runtimeDecision.ShouldConfirm, Is.True);
+    }
+
+    [Test]
     public void Test_DialogPolicy_BlocksRuntimeDialogsOutsideRuntimeRequest()
     {
         TwinCatModalDialog dialog = new(

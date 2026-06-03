@@ -49,6 +49,8 @@ internal sealed class TwinCatAutomationService : IDisposable
     {
         return _dispatcher.InvokeAsync<object>(() =>
         {
+            TryHandleModalDialog();
+
             string? targetNetId = null;
             string? lastErrorMessages = null;
 

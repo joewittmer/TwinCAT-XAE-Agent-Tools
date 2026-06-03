@@ -74,7 +74,7 @@ internal static class TwinCatModalDialogPolicy
     {
         string content = $"{dialog.Title}\n{dialog.Text}";
 
-        if (IsExternalFileReloadPrompt(content))
+        if (IsReloadFromDiskPrompt(content))
         {
             return TwinCatModalDialogDecision.Confirm;
         }
@@ -117,10 +117,23 @@ internal static class TwinCatModalDialogPolicy
         return TwinCatModalDialogDecision.Block("XAE is blocked by an unrecognized modal dialog.");
     }
 
-    internal static bool IsExternalFileReloadPrompt(string content)
+    internal static bool IsReloadFromDiskPrompt(string content)
+    {
+        return IsExternalFileReloadPrompt(content) ||
+            IsExternalProjectReloadPrompt(content);
+    }
+
+    private static bool IsExternalFileReloadPrompt(string content)
     {
         return Contains(content, "File has been changed outside the environment") &&
             Contains(content, "Reload the new file");
+    }
+
+    private static bool IsExternalProjectReloadPrompt(string content)
+    {
+        return Contains(content, "project file") &&
+            Contains(content, "has been modified outside of TwinCAT XAE") &&
+            Contains(content, "reload the project");
     }
 
     private static bool Contains(string text, string value)
@@ -510,7 +523,7 @@ internal static class TwinCatModalDialogInspector
     private static bool IsRecognizedContent(string title, string text)
     {
         string content = $"{title}\n{text}";
-        return TwinCatModalDialogPolicy.IsExternalFileReloadPrompt(content) ||
+        return TwinCatModalDialogPolicy.IsReloadFromDiskPrompt(content) ||
             content.Contains("Restart TwinCAT System in Config Mode", StringComparison.OrdinalIgnoreCase) ||
             content.Contains("Load I/O Devices", StringComparison.OrdinalIgnoreCase) ||
             content.Contains("Activate Free Run", StringComparison.OrdinalIgnoreCase);
