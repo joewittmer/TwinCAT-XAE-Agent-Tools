@@ -51,6 +51,11 @@ internal sealed class TwinCatAutomationService : IDisposable
         {
             TryHandleModalDialog();
 
+            if (_sysManager is null)
+            {
+                TryRefreshActiveProject(projectIndex: null, projectName: null, TimeSpan.Zero);
+            }
+
             string? targetNetId = null;
             string? lastErrorMessages = null;
 
@@ -484,8 +489,7 @@ internal sealed class TwinCatAutomationService : IDisposable
 
     private void SetActiveProjectCore(int? projectIndex, string? projectName)
     {
-        object project = WaitForProject(projectIndex ?? 1, projectName);
-        object sysManager = GetProperty(project, "Object");
+        (object project, object sysManager) = WaitForProject(projectIndex, projectName, GetProjectLoadTimeout());
 
         ActiveComObject.Release(_sysManager);
         ActiveComObject.Release(_activeProject);
@@ -493,38 +497,43 @@ internal sealed class TwinCatAutomationService : IDisposable
         _sysManager = sysManager;
     }
 
-    private object WaitForProject(int projectIndex, string? projectName)
+    private (object Project, object SysManager) WaitForProject(int? projectIndex, string? projectName, TimeSpan timeout)
     {
-        DateTime deadline = DateTime.UtcNow.AddSeconds(Math.Max(1, _options.ProjectLoadTimeoutSeconds));
+        DateTime deadline = DateTime.UtcNow.Add(timeout);
         Exception? lastError = null;
 
-        while (DateTime.UtcNow < deadline)
+        while (true)
         {
             TryHandleModalDialog();
 
             try
             {
                 object projects = GetProjects();
-                int count = Convert.ToInt32(GetProperty(projects, "Count"), CultureInfo.InvariantCulture);
+                int twinCatProjectIndex = 0;
 
-                if (!string.IsNullOrWhiteSpace(projectName))
+                foreach (object project in EnumerateProjects(projects))
                 {
-                    for (int index = 1; index <= count; index++)
+                    string? name = TryGetString(project, "Name");
+                    if (!string.IsNullOrWhiteSpace(projectName) &&
+                        !string.Equals(name, projectName, StringComparison.OrdinalIgnoreCase))
                     {
-                        object project = InvokeMethod(projects, "Item", index);
-                        string? name = TryGetString(project, "Name");
-                        if (string.Equals(name, projectName, StringComparison.OrdinalIgnoreCase))
-                        {
-                            GetProperty(project, "Object");
-                            return project;
-                        }
+                        continue;
                     }
-                }
-                else if (count >= projectIndex)
-                {
-                    object project = InvokeMethod(projects, "Item", projectIndex);
-                    GetProperty(project, "Object");
-                    return project;
+
+                    if (!TryGetSysManager(project, out object? sysManager, out Exception? error))
+                    {
+                        lastError = error;
+                        continue;
+                    }
+
+                    twinCatProjectIndex++;
+
+                    if (projectIndex.HasValue && twinCatProjectIndex != projectIndex.Value)
+                    {
+                        continue;
+                    }
+
+                    return (project, sysManager);
                 }
             }
             catch (Exception ex) when (ex is COMException or TargetInvocationException or MissingMethodException or InvalidOperationException)
@@ -532,16 +541,24 @@ internal sealed class TwinCatAutomationService : IDisposable
                 lastError = ex;
             }
 
+            if (DateTime.UtcNow >= deadline)
+            {
+                break;
+            }
+
             Thread.Sleep(200);
         }
 
-        string target = string.IsNullOrWhiteSpace(projectName)
-            ? $"index {projectIndex}"
-            : $"name '{projectName}'";
+        string target = ResolveProjectTargetDescription(projectIndex, projectName);
         throw new TimeoutException($"Timed out waiting for TwinCAT project {target} to load.", lastError);
     }
 
     private void TryRefreshActiveProject(int? projectIndex, string? projectName)
+    {
+        TryRefreshActiveProject(projectIndex, projectName, GetProjectLoadTimeout());
+    }
+
+    private void TryRefreshActiveProject(int? projectIndex, string? projectName, TimeSpan timeout)
     {
         if (_dte is null || !IsSolutionOpen())
         {
@@ -550,9 +567,14 @@ internal sealed class TwinCatAutomationService : IDisposable
 
         try
         {
-            SetActiveProjectCore(projectIndex, projectName);
+            (object project, object sysManager) = WaitForProject(projectIndex, projectName, timeout);
+
+            ActiveComObject.Release(_sysManager);
+            ActiveComObject.Release(_activeProject);
+            _activeProject = project;
+            _sysManager = sysManager;
         }
-        catch (Exception ex) when (ex is TimeoutException or COMException or TargetInvocationException)
+        catch (Exception ex) when (ex is TimeoutException or COMException or TargetInvocationException or MissingMethodException or InvalidOperationException)
         {
         }
     }
@@ -816,6 +838,11 @@ internal sealed class TwinCatAutomationService : IDisposable
     {
         if (_sysManager is null)
         {
+            TryRefreshActiveProject(projectIndex: null, projectName: null);
+        }
+
+        if (_sysManager is null)
+        {
             throw new InvalidOperationException("No TwinCAT project is active. Call xae_open_solution or xae_set_active_project first.");
         }
 
@@ -825,6 +852,66 @@ internal sealed class TwinCatAutomationService : IDisposable
     private object GetProjects()
     {
         return GetProperty(GetProperty(EnsureDte(), "Solution"), "Projects");
+    }
+
+    private static IEnumerable<object> EnumerateProjects(object projects)
+    {
+        int count = Convert.ToInt32(GetProperty(projects, "Count"), CultureInfo.InvariantCulture);
+        for (int index = 1; index <= count; index++)
+        {
+            object project = InvokeMethod(projects, "Item", index);
+            yield return project;
+
+            foreach (object childProject in EnumerateChildProjects(project))
+            {
+                yield return childProject;
+            }
+        }
+    }
+
+    private static IEnumerable<object> EnumerateChildProjects(object project)
+    {
+        object? projectItems = TryGetObject(project, "ProjectItems");
+        if (projectItems is null)
+        {
+            yield break;
+        }
+
+        int count;
+        try
+        {
+            count = Convert.ToInt32(GetProperty(projectItems, "Count"), CultureInfo.InvariantCulture);
+        }
+        catch (Exception ex) when (ex is COMException or TargetInvocationException or MissingMethodException or FormatException)
+        {
+            yield break;
+        }
+
+        for (int index = 1; index <= count; index++)
+        {
+            object projectItem;
+            try
+            {
+                projectItem = InvokeMethod(projectItems, "Item", index);
+            }
+            catch (Exception ex) when (ex is COMException or TargetInvocationException or MissingMethodException)
+            {
+                continue;
+            }
+
+            object? childProject = TryGetObject(projectItem, "SubProject");
+            if (childProject is null)
+            {
+                continue;
+            }
+
+            yield return childProject;
+
+            foreach (object nestedProject in EnumerateChildProjects(childProject))
+            {
+                yield return nestedProject;
+            }
+        }
     }
 
     private bool IsSolutionOpen()
@@ -888,6 +975,63 @@ internal sealed class TwinCatAutomationService : IDisposable
         ActiveComObject.Release(_activeProject);
         _sysManager = null;
         _activeProject = null;
+    }
+
+    private TimeSpan GetProjectLoadTimeout()
+    {
+        return TimeSpan.FromSeconds(Math.Max(1, _options.ProjectLoadTimeoutSeconds));
+    }
+
+    private static string ResolveProjectTargetDescription(int? projectIndex, string? projectName)
+    {
+        if (!string.IsNullOrWhiteSpace(projectName))
+        {
+            return $"named '{projectName}'";
+        }
+
+        if (projectIndex.HasValue)
+        {
+            return $"index {projectIndex.Value}";
+        }
+
+        return "in the open solution";
+    }
+
+    private static bool TryGetSysManager(object project, out object sysManager, out Exception? error)
+    {
+        try
+        {
+            object candidate = GetProperty(project, "Object");
+            if (!IsSysManagerObject(candidate))
+            {
+                sysManager = new { };
+                error = new InvalidOperationException("Project.Object is not a TwinCAT system manager.");
+                return false;
+            }
+
+            sysManager = candidate;
+            error = null;
+            return true;
+        }
+        catch (Exception ex) when (ex is COMException or TargetInvocationException or MissingMethodException or InvalidOperationException)
+        {
+            sysManager = new { };
+            error = ex;
+            return false;
+        }
+    }
+
+    private static bool IsSysManagerObject(object candidate)
+    {
+        try
+        {
+            InvokeMethod(candidate, "GetTargetNetId");
+            return true;
+        }
+        catch (Exception ex) when (ex is COMException or TargetInvocationException or MissingMethodException or InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     private static object GetProperty(object target, string name)
@@ -984,6 +1128,18 @@ internal sealed class TwinCatAutomationService : IDisposable
             return GetProperty(target, propertyName)?.ToString();
         }
         catch (Exception ex) when (ex is COMException or TargetInvocationException or MissingMethodException)
+        {
+            return null;
+        }
+    }
+
+    private static object? TryGetObject(object target, string propertyName)
+    {
+        try
+        {
+            return GetProperty(target, propertyName);
+        }
+        catch (Exception ex) when (ex is COMException or TargetInvocationException or MissingMethodException or InvalidOperationException)
         {
             return null;
         }

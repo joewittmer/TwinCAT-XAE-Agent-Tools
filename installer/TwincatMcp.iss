@@ -3,7 +3,7 @@
 #define AppExeName "TwinCAT XAE Agent Tools.exe"
 
 #ifndef AppVersion
-#define AppVersion "0.2.2"
+#define AppVersion "0.2.3"
 #endif
 
 #ifndef SourceDir
