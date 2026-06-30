@@ -50,7 +50,8 @@
 - Use lowercase commit messages.
 - Add new features on a dedicated `feature/<name>` branch, creating one from `main` unless the user names an existing branch.
 - Keep `main` for stable fixes, documentation, release, and maintenance work unless the user explicitly asks for feature work there.
-- Create version tags only on `main` after the matching `Version` bump has been merged, built, and tested.
+- For release commits on `main`, bump `Version`, `AssemblyVersion`, and `FileVersion` in `Directory.Build.props`, keep installer `AppVersion` aligned, build, test, then create the matching `v<version>` tag.
+- Create version tags only on `main` after the matching version bump has been committed, built, and tested.
 - Do not create version tags on feature branches.
 
 ## Documentation

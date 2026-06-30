@@ -219,8 +219,26 @@ internal sealed class TwinCatAutomationService : IDisposable
     {
         return _dispatcher.InvokeAsync<object>(() =>
         {
-            InvokeMethod(EnsureSysManager(), "SetTargetNetId", netId);
-            return new { targetNetId = InvokeMethod(EnsureSysManager(), "GetTargetNetId")?.ToString() };
+            object sysManager = EnsureSysManager();
+            TwinCatProjectMetadataSnapshot? projectMetadata =
+                TwinCatProjectMetadataGuard.Capture(GetActiveProjectFilePath());
+            string? activeTargetPlatform = TryGetActiveTargetPlatform(sysManager);
+
+            InvokeMethod(sysManager, "SetTargetNetId", netId);
+
+            bool activeTargetPlatformRestored =
+                RestoreActiveTargetPlatform(sysManager, activeTargetPlatform);
+            TwinCatProjectMetadataRestoreResult projectMetadataResult =
+                TwinCatProjectMetadataGuard.RestorePreservedAttributes(projectMetadata);
+
+            return new
+            {
+                targetNetId = InvokeMethod(sysManager, "GetTargetNetId")?.ToString(),
+                activeTargetPlatform = TryGetActiveTargetPlatform(sysManager),
+                activeTargetPlatformRestored,
+                checkedProjectFile = projectMetadataResult.Checked ? projectMetadataResult.ProjectPath : null,
+                restoredProjectAttributes = projectMetadataResult.RestoredAttributes
+            };
         });
     }
 
@@ -956,6 +974,22 @@ internal sealed class TwinCatAutomationService : IDisposable
         return _activeProject is null ? null : TryGetString(_activeProject, "Name");
     }
 
+    private string? GetActiveProjectFilePath()
+    {
+        if (_activeProject is null)
+        {
+            return null;
+        }
+
+        string? fullName = TryGetString(_activeProject, "FullName");
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            return null;
+        }
+
+        return Path.GetFullPath(fullName);
+    }
+
     private object StatusSnapshot()
     {
         return new
@@ -1063,6 +1097,51 @@ internal sealed class TwinCatAutomationService : IDisposable
         {
             return false;
         }
+    }
+
+    private static string? TryGetActiveTargetPlatform(object sysManager)
+    {
+        object? configurationManager = TryGetObject(sysManager, "ConfigurationManager");
+        return configurationManager is null
+            ? null
+            : TryGetString(configurationManager, "ActiveTargetPlatform");
+    }
+
+    private static bool RestoreActiveTargetPlatform(object sysManager, string? activeTargetPlatform)
+    {
+        if (string.IsNullOrWhiteSpace(activeTargetPlatform))
+        {
+            return false;
+        }
+
+        object? configurationManager = TryGetObject(sysManager, "ConfigurationManager");
+        if (configurationManager is null)
+        {
+            return false;
+        }
+
+        string? currentPlatform = TryGetString(configurationManager, "ActiveTargetPlatform");
+        if (string.Equals(currentPlatform, activeTargetPlatform, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!TrySetProperty(configurationManager, "ActiveTargetPlatform", activeTargetPlatform))
+        {
+            throw new InvalidOperationException(
+                $"SetTargetNetId changed the active target platform from '{activeTargetPlatform}' to '{currentPlatform}', " +
+                "and the original platform could not be restored.");
+        }
+
+        string? restoredPlatform = TryGetString(configurationManager, "ActiveTargetPlatform");
+        if (!string.Equals(restoredPlatform, activeTargetPlatform, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"SetTargetNetId changed the active target platform from '{activeTargetPlatform}' to '{currentPlatform}', " +
+                $"but XAE reported '{restoredPlatform}' after the restore attempt.");
+        }
+
+        return true;
     }
 
     private static object InvokeMethod(object target, string name, params object?[] args)
